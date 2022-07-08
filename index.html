@@ -54,7 +54,7 @@
     function update(progress) {
 
       fireworks.forEach(firework => {
-        if (firework.velocity.y < -0.02) {
+        if (!firework.explosion) {
           let lastParticle = firework.trail.particles[firework.trail.particles.length - 1];
           firework.trail.particles.push({
             position: {
@@ -64,31 +64,46 @@
           });
           firework.velocity.x *= 0.95;
           firework.velocity.y *= 0.95;
-        } else {
-          let raysCount = randomInt(5, 8);
-          let rays =
+
+          if (firework.velocity.y >= -0.02) {
+            let raysCount = randomInt(5, 8);
+            let rays = []
+            for (let i = 0; i < raysCount; i++) {
+              rays.push({
+                velocity: { x: random(-0.6, 0.6), y: random(-0.6, 0.6) },
+                particles: [
+                  {
+                    position: lastParticle.position,
+                  }
+                ]
+              });
+            }
             firework.explosion = {
-              rays: [
-                {
-                  velocity: { x: 0, y: 0 },
-                  particles: [
-                    {
-                      position: { x: 0, y: 0 },
-                      velocity: { x: 0, y: 0 },
-                      elapsed: 0,
-                      min: 0,
-                      max: 100
-                    }
-                  ]
-                }
-              ],
+              rays,
               elapsed: 0,
               min: 0,
               max: 100
             };
-          //firework.remove = true;
+          }
+        } else {
+          firework.explosion.rays.forEach(ray => {
+            let lastParticle = ray.particles[ray.particles.length - 1];
+            ray.particles.push({
+              position: {
+                x: lastParticle.position.x + progress * ray.velocity.x,
+                y: lastParticle.position.y + progress * ray.velocity.y
+              },
+            });
+            ray.velocity.x *= 0.95;
+            ray.velocity.y *= 0.95;
+
+            if (Math.abs(ray.velocity.y) < 0.001) {
+              firework.remove = true;
+            }
+          });
         }
       });
+
       fireworks = fireworks.filter(it => !it.remove);
       if (random(0, 1) < 0.05) {
         fireworks.push(randmomFirework())
@@ -104,11 +119,17 @@
         if (firework.explosion) {
           let lastParticle = firework.trail.particles[firework.trail.particles.length - 1];
 
-          ctx.fillStyle = 'red';
-          ctx.fillRect(lastParticle.position.x, lastParticle.position.y, 30, 30);
+          firework.explosion.rays.forEach(ray => {
+            let particleCount = ray.particles.length;
+            ray.particles.forEach((particle, ix) => {
+              ctx.fillStyle = `rgba(255, 0, 0, ${ix / particleCount})`
+              ctx.fillRect(particle.position.x, particle.position.y, 3, 3);
+            });
+          });
         } else {
-          firework.trail.particles.forEach(particle => {
-            ctx.fillStyle = 'white'
+          let particleCount = firework.trail.particles.length;
+          firework.trail.particles.forEach((particle, ix) => {
+            ctx.fillStyle = `rgba(255, 255, 255, ${ix / particleCount})`
             ctx.fillRect(particle.position.x, particle.position.y, 2, 2)
           })
         }
