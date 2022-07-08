@@ -66,11 +66,17 @@
           firework.velocity.y *= 0.95;
 
           if (firework.velocity.y >= -0.02) {
-            let raysCount = randomInt(5, 8);
+            let raysCount = randomInt(5, 16);
             let rays = []
+            let overallVelocity = random(0.15, 0.8);
+            let increment = Math.PI * 2 / raysCount;
+            let currentAngle = random(0, increment);
             for (let i = 0; i < raysCount; i++) {
+              let x = Math.cos(currentAngle) * overallVelocity;
+              let y = Math.sin(currentAngle) * overallVelocity;
+              currentAngle += increment;
               rays.push({
-                velocity: { x: random(-0.6, 0.6), y: random(-0.6, 0.6) },
+                velocity: { x, y },
                 particles: [
                   {
                     position: lastParticle.position,
@@ -97,7 +103,7 @@
             ray.velocity.x *= 0.95;
             ray.velocity.y *= 0.95;
 
-            if (Math.abs(ray.velocity.y) < 0.001) {
+            if (Math.abs(ray.velocity.y) < 0.001 && Math.abs(ray.velocity.x) < 0.001) {
               firework.remove = true;
             }
           });
