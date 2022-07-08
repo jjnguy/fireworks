@@ -49,6 +49,15 @@
     }
 
     let fireworks = []
+    let availableColors = [
+      { r: 255, g: 0, b: 0 },
+      { r: 0, g: 255, b: 0 },
+      { r: 0, g: 0, b: 255 },
+      { r: 255, g: 255, b: 255 },
+    ]
+    function randomColor() {
+      return availableColors[randomInt(0, availableColors.length)]
+    }
 
     // https://www.sitepoint.com/quick-tip-game-loop-in-javascript/
     function update(progress) {
@@ -71,11 +80,13 @@
             let overallVelocity = random(0.15, 0.8);
             let increment = Math.PI * 2 / raysCount;
             let currentAngle = random(0, increment);
+            let color = randomColor()
             for (let i = 0; i < raysCount; i++) {
               let x = Math.cos(currentAngle) * overallVelocity;
               let y = Math.sin(currentAngle) * overallVelocity;
               currentAngle += increment;
               rays.push({
+                color,
                 velocity: { x, y },
                 particles: [
                   {
@@ -128,7 +139,7 @@
           firework.explosion.rays.forEach(ray => {
             let particleCount = ray.particles.length;
             ray.particles.forEach((particle, ix) => {
-              ctx.fillStyle = `rgba(255, 0, 0, ${ix / particleCount})`
+              ctx.fillStyle = `rgba(${ray.color.r}, ${ray.color.g}, ${ray.color.b}, ${ix / particleCount})`
               ctx.fillRect(particle.position.x, particle.position.y, 3, 3);
             });
           });
