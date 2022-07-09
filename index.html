@@ -19,13 +19,19 @@
       return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
     }
 
+    function fuse(midpoint, margin) {
+      midpoint = midpoint || 500
+      margin = margin || 100
+      return randomInt(midpoint - margin, midpoint + margin)
+    }
+
     let canvas = document.getElementById("sky");
     canvas.width = 1000
     canvas.height = 600
     let ctx = canvas.getContext("2d");
 
     function randmomFirework() {
-      return newFirework({ x: canvas.width / 2, y: canvas.height }, { x: random(-0.4, 0.4), y: random(-2, -0.5) });
+      return newFirework({ x: canvas.width / 2, y: canvas.height }, { x: random(-0.4, 0.4), y: random(-1.5, -0.7) });
     }
 
     function newFirework(origin, initialVelocity) {
@@ -33,14 +39,15 @@
         origin,
         velocity: initialVelocity,
         trail: {
+          fuse: fuse(),
+          born: age,
           velocity: { x: 0, y: 0 },
           particles: [
             {
               position: origin,
               velocity: { x: 0, y: 0 },
-              elapsed: 0,
-              min: 0,
-              max: 100
+              fuse: fuse(),
+              born: age,
             }
           ]
         },
@@ -48,33 +55,55 @@
       }
     }
 
+    let age = 0;
     let fireworks = []
     let availableColors = [
       { r: 255, g: 0, b: 0 },
       { r: 0, g: 255, b: 0 },
       { r: 0, g: 0, b: 255 },
       { r: 255, g: 255, b: 255 },
+      { r: 201, g: 148, b: 227 }, // Lavender
+      { r: 201, g: 148, b: 227 }, // lavender again
     ]
+    let expectedProgress = 1 / 60 * 1000;
+
     function randomColor() {
       return availableColors[randomInt(0, availableColors.length)]
     }
 
+    function applyGravityAndWindResistance(v, progress) {
+      let newV = {
+        x: v.x,
+        y: v.y,
+      };
+      newV.y += 0.0008 * progress
+
+      newV.y *= expectedProgress / progress * 0.98
+      newV.x *= expectedProgress / progress * 0.98
+
+      return newV
+    }
+
     // https://www.sitepoint.com/quick-tip-game-loop-in-javascript/
     function update(progress) {
-
+      age += progress;
       fireworks.forEach(firework => {
-        if (!firework.explosion) {
-          let lastParticle = firework.trail.particles[firework.trail.particles.length - 1];
+
+        let lastParticle = firework.trail.particles[firework.trail.particles.length - 1];
+
+        if (firework.trail.born + firework.trail.fuse > age) {
           firework.trail.particles.push({
             position: {
               x: lastParticle.position.x + progress * firework.velocity.x,
               y: lastParticle.position.y + progress * firework.velocity.y
-            }
+            },
+            fuse: 120,
+            born: age,
           });
-          firework.velocity.x *= 0.95;
-          firework.velocity.y *= 0.95;
+          firework.velocity = applyGravityAndWindResistance(firework.velocity, progress);
+        } else {
 
-          if (firework.velocity.y >= -0.02) {
+          if (!firework.explosion) {
             let raysCount = randomInt(5, 16);
             let rays = []
             let overallVelocity = random(0.15, 0.8);
@@ -91,38 +120,50 @@
                 particles: [
                   {
                     position: lastParticle.position,
+                    fuse: fuse(300),
+                    born: age,
                   }
                 ]
               });
             }
             firework.explosion = {
               rays,
-              elapsed: 0,
-              min: 0,
-              max: 100
+              fuse: fuse(700),
+              born: age,
             };
           }
-        } else {
+
           firework.explosion.rays.forEach(ray => {
             let lastParticle = ray.particles[ray.particles.length - 1];
-            ray.particles.push({
-              position: {
-                x: lastParticle.position.x + progress * ray.velocity.x,
-                y: lastParticle.position.y + progress * ray.velocity.y
-              },
-            });
-            ray.velocity.x *= 0.95;
-            ray.velocity.y *= 0.95;
 
-            if (Math.abs(ray.velocity.y) < 0.001 && Math.abs(ray.velocity.x) < 0.001) {
-              firework.remove = true;
+            if (firework.explosion.born + firework.explosion.fuse > age) {
+              // TODO: actually give particles velocity instead of a fixed position
+              ray.particles.push({
+                position: {
+                  x: lastParticle.position.x + progress * ray.velocity.x,
+                  y: lastParticle.position.y + progress * ray.velocity.y
+                },
+                fuse: fuse(),
+                born: age,
+              });
             }
+
+            ray.velocity = applyGravityAndWindResistance(ray.velocity, progress);
+          });
+
+
+        }
+
+        firework.trail.particles = firework.trail.particles.filter(p => p.born + p.fuse > age);
+        if (firework.explosion) {
+          firework.explosion.rays.forEach(r => {
+            r.particles = r.particles.filter(p => p.born + p.fuse > age);
           });
         }
       });
 
       fireworks = fireworks.filter(it => !it.remove);
-      if (random(0, 1) < 0.05) {
+      if (random(0, 1) < 0.02) {
         fireworks.push(randmomFirework())
       }
     }
@@ -138,15 +179,21 @@
 
           firework.explosion.rays.forEach(ray => {
             let particleCount = ray.particles.length;
-            ray.particles.forEach((particle, ix) => {
-              ctx.fillStyle = `rgba(${ray.color.r}, ${ray.color.g}, ${ray.color.b}, ${ix / particleCount})`
+            ray.particles.forEach(particle => {
+              let elapsed = age - particle.born;
+              let remainingLife = particle.fuse - elapsed;
+              let percent = remainingLife / particle.fuse;
+              ctx.fillStyle = `rgba(${ray.color.r}, ${ray.color.g}, ${ray.color.b}, ${percent})`
               ctx.fillRect(particle.position.x, particle.position.y, 3, 3);
             });
           });
         } else {
           let particleCount = firework.trail.particles.length;
-          firework.trail.particles.forEach((particle, ix) => {
-            ctx.fillStyle = `rgba(255, 255, 255, ${ix / particleCount})`
+          firework.trail.particles.forEach(particle => {
+            let elapsed = age - particle.born;
+            let remainingLife = particle.fuse - elapsed;
+            let percent = remainingLife / particle.fuse;
+            ctx.fillStyle = `rgba(255, 255, 255, ${percent})`
             ctx.fillRect(particle.position.x, particle.position.y, 2, 2)
           })
         }
