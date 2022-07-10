@@ -65,7 +65,6 @@
       { r: 201, g: 148, b: 227 }, // Lavender
       { r: 201, g: 148, b: 227 }, // lavender again
     ]
-    let expectedProgress = 1 / 60 * 1000;
 
     function randomColor() {
       return availableColors[randomInt(0, availableColors.length)]
@@ -76,10 +75,12 @@
         x: v.x,
         y: v.y,
       };
-      newV.y += 0.0008 * progress
+      // gravity
+      newV.y += 0.0003 * progress
 
-      newV.y *= expectedProgress / progress * 0.98
-      newV.x *= expectedProgress / progress * 0.98
+      // drag
+      newV.y *= 0.94
+      newV.x *= 0.94
 
       return newV
     }
@@ -200,11 +201,15 @@
       });
     }
 
+    let accumulatedProgress = 0;
     function loop(timestamp) {
-      var progress = timestamp - lastRender
+      accumulatedProgress += timestamp - lastRender;
 
-      update(progress)
-      draw()
+      if (accumulatedProgress > 18) {
+        update(accumulatedProgress);
+        draw();
+        accumulatedProgress = 0;
+      }
 
       lastRender = timestamp
       window.requestAnimationFrame(loop)
