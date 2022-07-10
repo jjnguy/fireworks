@@ -185,7 +185,7 @@
               let remainingLife = particle.fuse - elapsed;
               let percent = remainingLife / particle.fuse;
               ctx.fillStyle = `rgba(${ray.color.r}, ${ray.color.g}, ${ray.color.b}, ${percent})`
-              ctx.fillRect(particle.position.x, particle.position.y, 3, 3);
+              ctx.fillRect(particle.position.x, particle.position.y, 6, 6);
             });
           });
         } else {
@@ -195,7 +195,7 @@
             let remainingLife = particle.fuse - elapsed;
             let percent = remainingLife / particle.fuse;
             ctx.fillStyle = `rgba(255, 255, 255, ${percent})`
-            ctx.fillRect(particle.position.x, particle.position.y, 2, 2)
+            ctx.fillRect(particle.position.x, particle.position.y, 4, 4)
           })
         }
       });
